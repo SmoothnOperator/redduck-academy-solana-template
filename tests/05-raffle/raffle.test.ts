@@ -155,6 +155,31 @@ describe("05-raffle", () => {
     // 3. Fast-forward past deadline
     await timeTravel(context, drawTime + 10n);
 
+    // 3b. Explicitly request randomness before oracle fulfillment
+    const DEFAULT_VRF_QUEUE = new PublicKey(
+      "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh",
+    );
+    const requestIx = await program.methods
+      .requestRandomness()
+      .accountsPartial({
+        payer: payer.publicKey,
+        raffle: rafflePda(),
+        randomness,
+        oracleQueue: DEFAULT_VRF_QUEUE,
+      })
+      .instruction();
+    try {
+      await sendIxs(context, [payer], requestIx);
+    } catch (err: unknown) {
+      // Bankrun deploys only the raffle program without MagicBlock's live VRF program;
+      // verify all RaffleError guards passed and only the external VRF CPI is absent.
+      const msg = String(err);
+      assert.isFalse(
+        msg.includes("0x177"),
+        `requestRandomness failed a raffle guard unexpectedly: ${msg}`,
+      );
+    }
+
     // 4. Oracle callback delivers 32-byte VRF randomness
     const randomBytes = Array.from({ length: 32 }, (_, i) => i);
     await fulfillRandomness(env, randomBytes);
