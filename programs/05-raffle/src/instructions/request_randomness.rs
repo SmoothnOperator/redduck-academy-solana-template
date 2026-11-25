@@ -5,7 +5,9 @@ use ephemeral_vrf_sdk::consts::DEFAULT_QUEUE;
 use ephemeral_vrf_sdk::instructions::{create_request_randomness_ix, RequestRandomnessParams};
 use ephemeral_vrf_sdk::types::SerializableAccountMeta;
 
-use crate::state::Randomness;
+use crate::constants::{RAFFLE_SEED, RANDOMNESS_SEED};
+use crate::error::RaffleError;
+use crate::state::{Raffle, Randomness};
 
 // Requests a random value from MagicBlock VRF. The VRF program answers later by
 // calling `consume_randomness` back, signed by its identity. The `#[vrf]` macro
@@ -18,7 +20,14 @@ pub struct RequestRandomness<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    #[account(mut, seeds = [b"randomness"], bump)]
+    #[account(
+        mut,
+        seeds = [RAFFLE_SEED],
+        bump = raffle.bump,
+    )]
+    pub raffle: Account<'info, Raffle>,
+
+    #[account(mut, seeds = [RANDOMNESS_SEED], bump)]
     pub randomness: Account<'info, Randomness>,
 
     /// CHECK: the VRF oracle queue, pinned by address.
@@ -27,7 +36,13 @@ pub struct RequestRandomness<'info> {
 }
 
 pub fn request_randomness(ctx: Context<RequestRandomness>) -> Result<()> {
-    // TODO: gate the draw on your own rules (deadline passed, entries exist, once).
+    let clock = Clock::get()?;
+    require!(clock.unix_timestamp >= ctx.accounts.raffle.draw_time, RaffleError::RaffleStillOpen);
+    require!(ctx.accounts.raffle.entry_count > 0, RaffleError::NoEntries);
+    require!(ctx.accounts.raffle.total_deposited > 0, RaffleError::NoEntries);
+    require!(!ctx.accounts.raffle.randomness_requested, RaffleError::RandomnessAlreadyRequested);
+
+    ctx.accounts.raffle.randomness_requested = true;
 
     // Name `consume_randomness` as the callback and forward the `Randomness`
     // account (writable) so the oracle's reply can be written into it.
