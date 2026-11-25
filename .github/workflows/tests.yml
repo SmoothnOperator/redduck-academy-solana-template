@@ -1,0 +1,48 @@
+name: Solana Tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libudev-dev libssl-dev protobuf-compiler
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Solana CLI (Agave v2.1.21)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.1.21/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana-keygen new --no-bip39-passphrase --force --silent
+
+      - name: Install Anchor CLI 0.31.1
+        run: |
+          cargo install --git https://github.com/solana-foundation/anchor avm --locked --force
+          avm install 0.31.1
+          avm use 0.31.1
+
+      - name: Install JS dependencies
+        run: npm install
+
+      - name: Build and test 04-merkle-airdrop
+        run: npm run test:merkleAirdrop
+
+      - name: Build and test 05-raffle
+        run: npm run test:raffle
