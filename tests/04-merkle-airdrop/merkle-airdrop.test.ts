@@ -384,4 +384,22 @@ describe("04-merkle-airdrop", () => {
       sendIxs(context, [claimant], ed25519Ix, claimIx),
     );
   });
+
+  it("rejects re-running initialize on the same config (one-time initialization)", async () => {
+    const { context, program, payer, mint, tree, signer } = env;
+
+    const initIx = await program.methods
+      .initialize([...tree.root], signer.publicKey)
+      .accountsPartial({
+        mint,
+        payer: payer.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+
+    await expectReverted(
+      { revertedWith: { message: "custom program error" } },
+      sendIxs(context, [payer], initIx),
+    );
+  });
 });
