@@ -12,9 +12,17 @@ pub enum Tier {
 }
 
 impl Tier {
-    // TODO: map a cumulative total (in lamports) to a tier. The boundaries are
-    // in TASK.md — mind which edges are inclusive vs exclusive.
-    pub fn from_total(_total: u64) -> Self {
-        todo!()
+    pub fn from_total(total: u64) -> Self {
+        if total == 0 {
+            Tier::None
+        } else if total < 100_000_000 {
+            Tier::Bronze
+        } else if total < 1_000_000_000 {
+            Tier::Silver
+        } else if total < 10_000_000_000 {
+            Tier::Gold
+        } else {
+            Tier::Platinum
+        }
     }
 }
