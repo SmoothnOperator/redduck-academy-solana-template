@@ -21,12 +21,8 @@ export const hashLeaf = (entry: AirdropEntry): Buffer => {
 
 export const hashPair = (a: Buffer, b: Buffer): Buffer => {
   return a.compare(b) <= 0
-    ? createHash("sha256")
-        .update(Buffer.concat([a, b]))
-        .digest()
-    : createHash("sha256")
-        .update(Buffer.concat([b, a]))
-        .digest();
+    ? createHash("sha256").update(Buffer.concat([a, b])).digest()
+    : createHash("sha256").update(Buffer.concat([b, a])).digest();
 };
 
 export class MerkleTree {
